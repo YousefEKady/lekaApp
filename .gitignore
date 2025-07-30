@@ -1,0 +1,25 @@
+# Ignore session files
+*.session
+
+# Ignore downloaded leaks and parsed data
+downloads/
+parsed_leaked_json/
+
+# Ignore database and cache files
+db/
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore test and local files
+test_connections.py
+downloaded_files.txt
+
+# Ignore environment variables
+.env
+
+# Ignore log files
+*.log
+
+# Ignore zip files
+*.zip
