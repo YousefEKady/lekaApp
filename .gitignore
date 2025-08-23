@@ -4,6 +4,7 @@
 # Ignore downloaded leaks and parsed data
 downloads/
 parsed_leaked_json/
+logs/
 
 # Ignore database and cache files
 db/
@@ -13,7 +14,6 @@ __pycache__/
 
 # Ignore test and local files
 test_connections.py
-downloaded_files.txt
 
 # Ignore environment variables
 .env
@@ -23,3 +23,7 @@ downloaded_files.txt
 
 # Ignore zip files
 *.zip
+
+# TXT files
+downloaded_files.txt
+improvements_log.txt
