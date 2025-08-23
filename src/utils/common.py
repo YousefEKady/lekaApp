@@ -678,7 +678,7 @@ if __name__ == '__main__':
     # Test string utilities
     print("\nTesting StringUtils...")
     print(f"Format bytes: {StringUtils.format_bytes(1536)}")
-    print(f"Extract domain: {StringUtils.extract_domain('https://example.com/path')}")
+    print(f"Extract domain: {StringUtils.extract_domain('https://example.com/path')}")  # TODO: Change example.com to production domain in production
     
     # Test time utilities
     print("\nTesting TimeUtils...")

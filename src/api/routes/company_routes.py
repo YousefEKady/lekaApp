@@ -145,8 +145,11 @@ async def get_dashboard_data(
         company_service = get_company_service()
         
         # Get company information
+        logger.info(f"Looking for company with ID: {current_user.company_id}")
         company_info = await company_service.get_company(current_user.company_id)
+        logger.info(f"Company info result: {company_info}")
         if not company_info:
+            logger.error(f"Company not found for ID: {current_user.company_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Company not found"

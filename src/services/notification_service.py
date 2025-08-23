@@ -16,8 +16,8 @@ import aiosmtplib
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from ..database.models import User, Company, Notification, NotificationStatus
-from ..database.connection import get_db
+from src.database.models import User, Company, Notification, NotificationStatus
+from src.database.connection import get_db
 from src.config.config import config
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class EmailConfig(BaseModel):
     """Email configuration settings."""
-    smtp_host: str = "smtp.gmail.com"
+    smtp_host: str = "smtp.gmail.com"  # TODO: Change to production SMTP server in production
     smtp_port: int = 587
     smtp_username: str
     smtp_password: str
@@ -38,7 +38,7 @@ class TelegramConfig(BaseModel):
     """Telegram bot configuration settings."""
     bot_token: str
     chat_id: Optional[str] = None
-    api_url: str = "https://api.telegram.org/bot"
+    api_url: str = "https://api.telegram.org/bot"  # TODO: Change to production Telegram API URL in production
 
 
 class NotificationTemplate(BaseModel):

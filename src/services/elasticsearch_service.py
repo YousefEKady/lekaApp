@@ -607,3 +607,27 @@ class ElasticsearchService:
             logger.info("Elasticsearch connection closed")
         except Exception as e:
             logger.error(f"Error closing Elasticsearch connection: {e}")
+
+
+# Global instance
+_elasticsearch_service = None
+
+
+def get_elasticsearch_service() -> ElasticsearchService:
+    """
+    Get the global Elasticsearch service instance.
+    
+    Returns:
+        ElasticsearchService: The global Elasticsearch service instance
+    """
+    global _elasticsearch_service
+    if _elasticsearch_service is None:
+        _elasticsearch_service = ElasticsearchService(
+            hosts=[config.get_elasticsearch_url()],
+            username=config.ELASTICSEARCH_USERNAME,
+            password=config.ELASTICSEARCH_PASSWORD,
+            use_ssl=config.ELASTICSEARCH_USE_SSL,
+            verify_certs=config.ELASTICSEARCH_VERIFY_CERTS,
+            timeout=config.ELASTICSEARCH_TIMEOUT
+        )
+    return _elasticsearch_service

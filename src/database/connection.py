@@ -23,7 +23,7 @@ try:
 except ImportError:
     # Fallback configuration
     class Config:
-        DATABASE_URL = "postgresql://postgres:postgres123@localhost:5432/leka_app"
+        DATABASE_URL = "postgresql://postgres:postgres123@localhost:5432/leka_app"  # TODO: Change to production database URL in production
         DATABASE_ECHO = False
         DATABASE_POOL_SIZE = 10
         DATABASE_MAX_OVERFLOW = 20

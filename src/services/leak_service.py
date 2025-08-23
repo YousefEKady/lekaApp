@@ -14,8 +14,8 @@ import hashlib
 from sqlalchemy.orm import Session
 from elasticsearch import AsyncElasticsearch
 
-from ..database.models import User, Company, Domain, AuditLog
-from ..database.connection import get_db
+from src.database.models import User, Company, Domain, AuditLog
+from src.database.connection import get_db
 from .elasticsearch_service import ElasticsearchService
 from .notification_service import get_notification_service, LeakAlert
 from src.config.config import config

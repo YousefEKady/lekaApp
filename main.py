@@ -48,9 +48,15 @@ async def lifespan(app: FastAPI):
     
     # Initialize services
     try:
+        # Initialize database first
+        from src.database.connection import init_database
+        init_database()
+        logger.info("Database initialized successfully")
+        
         # Initialize Elasticsearch service
         from src.services.elasticsearch_service import ElasticsearchService
         from src.services.leak_service import initialize_leak_service
+        from src.services.company_service import initialize_company_service
         
         # Create Elasticsearch service instance
         es_service = ElasticsearchService(
@@ -63,6 +69,9 @@ async def lifespan(app: FastAPI):
         
         # Initialize leak service with Elasticsearch service
         initialize_leak_service(es_service)
+        
+        # Initialize company service
+        initialize_company_service()
         
         # Store service instances in app state for access in routes
         app.state.elasticsearch_service = es_service
@@ -100,7 +109,7 @@ app = FastAPI(
 # Security middleware
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.yourdomain.com"]
+    allowed_hosts=["localhost", "127.0.0.1", "*.yourdomain.com", "testserver"]  # TODO: Change to production domain in production
 )
 
 # CORS middleware
@@ -214,9 +223,9 @@ if __name__ == "__main__":
     # Development server configuration
     uvicorn.run(
         "main:app",
-        host=config.HOST,
-        port=config.PORT,
-        reload=config.RELOAD,
+        host=config.HOST,  # TODO: Change to production host in production
+        port=config.PORT,  # TODO: Change to production port in production
+        reload=config.RELOAD,  # TODO: Set to False in production
         log_level="info",
         access_log=True
     )

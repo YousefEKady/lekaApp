@@ -15,6 +15,7 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel, EmailStr, validator
 
 try:
@@ -164,7 +165,7 @@ async def get_admin_dashboard(
         current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         # Get recent audit logs for activity feed
-        recent_logs = db.query(AuditLog).join(User, AuditLog.user_id == User.id).order_by(AuditLog.timestamp.desc()).limit(10).all()
+        recent_logs = db.query(AuditLog).join(User, AuditLog.user_id == User.id).order_by(AuditLog.created_at.desc()).limit(10).all()
         
         recent_activity = []
         for log in recent_logs:
@@ -172,7 +173,7 @@ async def get_admin_dashboard(
                 "id": log.id,
                 "action": log.action,
                 "details": log.details or f"{log.action} on {log.resource_type}",
-                "timestamp": log.timestamp.isoformat(),
+                "timestamp": log.created_at.isoformat(),
                 "user": log.user.email if log.user else "System"
             }
             recent_activity.append(activity)
@@ -201,7 +202,7 @@ async def get_admin_dashboard(
                 "dark_web_monitoring": {
                     "status": "stopped",
                     "last_run": "2024-01-14T22:00:00Z",
-                    "next_run": null,
+                    "next_run": None,
                     "items_processed": 0
                 }
             },
@@ -462,6 +463,22 @@ async def update_company(
         
         # Update timestamp
         company.updated_at = datetime.utcnow()
+        
+        # If company status is being changed to 'active', update user verification status
+        if company_data.status and company_data.status == "active" and original_status != "active":
+            # Find all users associated with this company and verify them
+            company_users = db.query(User).filter(User.company_id == company_id).all()
+            for user in company_users:
+                user.is_verified = True
+            logger.info(f"Verified {len(company_users)} users for company {company_id}")
+        
+        # If company status is being changed from 'active' to something else, unverify users
+        elif company_data.status and company_data.status != "active" and original_status == "active":
+            # Find all users associated with this company and unverify them
+            company_users = db.query(User).filter(User.company_id == company_id).all()
+            for user in company_users:
+                user.is_verified = False
+            logger.info(f"Unverified {len(company_users)} users for company {company_id}")
         
         # Commit changes
         db.commit()
@@ -896,10 +913,10 @@ async def get_system_analytics(
         
         # Get audit log statistics
         total_audit_logs = db.query(AuditLog).count()
-        recent_activities = db.query(AuditLog).filter(AuditLog.timestamp >= start_date).count()
+        recent_activities = db.query(AuditLog).filter(AuditLog.created_at >= start_date).count()
         
         # Get top domains by count
-        top_domains = db.query(Domain.domain_name, db.func.count(Domain.id).label('count')).group_by(Domain.domain_name).order_by(db.func.count(Domain.id).desc()).limit(5).all()
+        top_domains = db.query(Domain.domain_name, func.count(Domain.id).label('count')).group_by(Domain.domain_name).order_by(func.count(Domain.id).desc()).limit(5).all()
         
         analytics_data = {
             "period": period,
@@ -974,7 +991,7 @@ async def get_audit_logs(
         total = query.count()
         
         # Apply pagination and ordering
-        audit_logs_db = query.order_by(AuditLog.timestamp.desc()).offset(offset).limit(limit).all()
+        audit_logs_db = query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
         
         # Format audit logs
         audit_logs = []
@@ -989,7 +1006,7 @@ async def get_audit_logs(
                 "details": log.details or {},
                 "ip_address": log.ip_address,
                 "user_agent": log.user_agent,
-                "timestamp": log.timestamp.isoformat() + "Z"
+                "timestamp": log.created_at.isoformat() + "Z"
             })
         
         return {

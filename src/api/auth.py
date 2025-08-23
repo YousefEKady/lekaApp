@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Union
 
 import jwt
+from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -44,11 +45,12 @@ class UserRole:
 
 
 class TokenData(BaseModel):
-    """Token data model."""
+    """Token data structure."""
     user_id: int
     email: str
     role: str
     company_id: Optional[int] = None
+    is_verified: bool = False
     exp: datetime
 
 
@@ -144,18 +146,19 @@ class JWTManager:
                 email=payload.get("email"),
                 role=payload.get("role"),
                 company_id=payload.get("company_id"),
+                is_verified=payload.get("is_verified", False),
                 exp=datetime.fromtimestamp(payload.get("exp"))
             )
             
             return token_data
             
-        except jwt.ExpiredSignatureError:
+        except ExpiredSignatureError:
             logger.warning(f"Expired {token_type} token")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired"
             )
-        except jwt.JWTError as e:
+        except InvalidTokenError as e:
             logger.warning(f"Invalid {token_type} token: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -226,7 +229,8 @@ class AuthenticationService:
             "user_id": user_data["id"],
             "email": user_data["email"],
             "role": user_data["role"],
-            "company_id": user_data.get("company_id")
+            "company_id": user_data.get("company_id"),
+            "is_verified": user_data.get("is_verified", False)
         }
         
         access_token = self.jwt_manager.create_access_token(token_data)
@@ -241,7 +245,8 @@ class AuthenticationService:
                 "email": user_data["email"],
                 "role": user_data["role"],
                 "company_id": user_data.get("company_id"),
-                "company_name": user_data.get("company_name")
+                "company_name": user_data.get("company_name"),
+                "is_verified": user_data.get("is_verified", False)
             }
         )
 
@@ -254,12 +259,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 
 async def get_current_company_user(current_user: TokenData = Depends(get_current_user)) -> TokenData:
-    """Get current company user (requires company_user role)."""
+    """Get current company user with verification check."""
     if current_user.role != UserRole.COMPANY_USER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Company user access required"
+            detail="Access denied. Company user role required."
         )
+    
+    # Check if user is verified (company approved)
+    if not current_user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. User not verified or company not approved."
+        )
+    
     return current_user
 
 

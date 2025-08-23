@@ -20,11 +20,11 @@ from pydantic import BaseModel, EmailStr, validator
 
 try:
     from src.api.auth import (
-        auth_service, get_current_user, UserRole,
+        auth_service, get_current_user,
         LoginRequest, TokenResponse, TokenData
     )
     from src.database.connection import get_db
-    from src.database.models import User, Company, AuditLog
+    from src.database.models import User, Company, AuditLog, UserRole
 except ImportError as e:
     logging.error(f"Import error in auth_routes: {e}")
     # Create placeholder classes for development
@@ -210,7 +210,7 @@ async def login(
         )
 
 
-@router.post("/register/company", response_model=Dict[str, str])
+@router.post("/register/company", response_model=Dict[str, Any])
 async def register_company(
     request: Request,
     registration_data: CompanyRegistrationRequest,
@@ -365,7 +365,7 @@ async def register_admin(
         return {
             "message": "Admin registration successful",
             "email": registration_data.email,
-            "user_id": new_admin.id
+            "user_id": str(new_admin.id)
         }
         
     except HTTPException:
@@ -392,12 +392,7 @@ async def refresh_token(
         
         # Verify refresh token
         try:
-            payload = JWTManager.verify_token(refresh_data.refresh_token)
-            if payload.get("type") != "refresh":
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token type"
-                )
+            payload = JWTManager.verify_token(refresh_data.refresh_token, token_type="refresh")
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -405,7 +400,7 @@ async def refresh_token(
             )
         
         # Get user from database
-        user_id = payload.get("sub")
+        user_id = payload.user_id
         user = db.query(User).filter(User.id == user_id).first()
         if not user or not user.is_active:
             raise HTTPException(

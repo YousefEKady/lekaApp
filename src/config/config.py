@@ -29,7 +29,7 @@ class Config:
             # Elasticsearch Configuration
             self.ELASTICSEARCH_HOST = self._get_env_var(
                 "ELASTICSEARCH_HOST", 
-                default="localhost",
+                default="localhost",  # TODO: Change to production Elasticsearch host in production
                 description="Elasticsearch host address"
             )
             
@@ -45,6 +45,38 @@ class Config:
                 "ELASTICSEARCH_INDEX", 
                 default="leaks",
                 description="Elasticsearch index name"
+            )
+            
+            self.ELASTICSEARCH_USERNAME = self._get_env_var(
+                "ELASTICSEARCH_USERNAME", 
+                required=False,
+                description="Elasticsearch username for authentication"
+            )
+            
+            self.ELASTICSEARCH_PASSWORD = self._get_env_var(
+                "ELASTICSEARCH_PASSWORD", 
+                required=False,
+                description="Elasticsearch password for authentication"
+            )
+            
+            self.ELASTICSEARCH_USE_SSL = self._get_bool_env_var(
+                "ELASTICSEARCH_USE_SSL",
+                default=False,
+                description="Enable SSL for Elasticsearch connection"
+            )
+            
+            self.ELASTICSEARCH_VERIFY_CERTS = self._get_bool_env_var(
+                "ELASTICSEARCH_VERIFY_CERTS",
+                default=True,
+                description="Verify SSL certificates for Elasticsearch"
+            )
+            
+            self.ELASTICSEARCH_TIMEOUT = self._get_int_env_var(
+                "ELASTICSEARCH_TIMEOUT",
+                default=30,
+                min_value=5,
+                max_value=300,
+                description="Elasticsearch request timeout in seconds"
             )
             
             # Data Filtering Configuration
@@ -197,7 +229,7 @@ class Config:
             # Database Settings (PostgreSQL)
             self.POSTGRES_HOST = self._get_env_var(
                 "POSTGRES_HOST",
-                default="localhost",
+                default="localhost",  # TODO: Change to production database host in production
                 required=False,
                 description="PostgreSQL host"
             )
@@ -234,7 +266,7 @@ class Config:
             # JWT Settings
             self.JWT_SECRET_KEY = self._get_env_var(
                 "JWT_SECRET_KEY",
-                default="your-secret-key-change-in-production",
+                default="your-secret-key-change-in-production",  # TODO: Change to secure random key in production
                 required=False,
                 description="JWT secret key"
             )
@@ -256,7 +288,7 @@ class Config:
             # CORS Settings
             cors_origins_str = self._get_env_var(
                 "CORS_ORIGINS",
-                default="http://localhost:3000,http://localhost:8080",
+                default="http://localhost:3000,http://localhost:8080",  # TODO: Change to production frontend URLs in production
                 required=False,
                 description="CORS allowed origins (comma-separated)"
             )
@@ -265,7 +297,7 @@ class Config:
             # Email Settings
             self.SMTP_HOST = self._get_env_var(
                 "SMTP_HOST",
-                default="smtp.gmail.com",
+                default="smtp.gmail.com",  # TODO: Change to production SMTP server in production
                 required=False,
                 description="SMTP host"
             )
@@ -409,21 +441,21 @@ class Config:
     
     def get_elasticsearch_url(self) -> str:
         """Get complete Elasticsearch URL."""
-        return f"http://{self.ELASTICSEARCH_HOST}:{self.ELASTICSEARCH_PORT}"
+        return f"http://{self.ELASTICSEARCH_HOST}:{self.ELASTICSEARCH_PORT}"  # TODO: Change to https:// and production URL in production
     
     def get_postgres_url(self, async_mode: bool = False) -> str:
         """Get PostgreSQL connection URL."""
         driver = "postgresql+asyncpg" if async_mode else "postgresql"
         return (
             f"{driver}://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"  # TODO: Change to production database URL in production
         )
     
     def get_redis_url(self) -> str:
         """Get Redis connection URL."""
         if self.REDIS_PASSWORD:
-            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0"
-        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0"  # TODO: Change to production Redis URL in production
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"  # TODO: Change to production Redis URL in production
     
     def validate_telegram_config(self) -> bool:
         """Check if Telegram configuration is complete."""

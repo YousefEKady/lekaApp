@@ -9,12 +9,12 @@ from typing import Dict, List, Optional, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 
-from ..database.models import (
+from src.database.models import (
     User, Company, Domain, AuditLog, Notification,
     UserRole, CompanyStatus, NotificationStatus
 )
-from ..database.connection import get_db
-from ..api.auth import PasswordManager
+from src.database.connection import get_db
+from src.api.auth import PasswordManager
 from .notification_service import get_notification_service
 from src.config.config import config
 
@@ -52,10 +52,10 @@ class DomainData:
     """Data structure for domain information."""
     
     def __init__(self, domain_name: str, description: Optional[str] = None,
-                 monitoring_enabled: bool = True):
+                 monitor_subdomains: bool = True):
         self.domain_name = domain_name.lower().strip()
         self.description = description
-        self.monitoring_enabled = monitoring_enabled
+        self.monitor_subdomains = monitor_subdomains
 
 
 class CompanyStats:
@@ -98,7 +98,8 @@ class CompanyService:
                              admin_user_id: Optional[int] = None) -> Tuple[bool, str, Optional[int]]:
         """Register a new company with initial user."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 # Check if company email already exists
                 existing_user = db.query(User).filter(User.email == registration_data.email).first()
                 if existing_user:
@@ -140,8 +141,7 @@ class CompanyService:
                         domain = Domain(
                             domain_name=domain_name.lower().strip(),
                             company_id=company.id,
-                            added_by_user_id=user.id,
-                            monitoring_enabled=True
+                            monitor_subdomains=True
                         )
                         db.add(domain)
                 
@@ -174,7 +174,8 @@ class CompanyService:
                 
                 logger.info(f"Company {company.name} registered successfully with ID {company.id}")
                 return True, "Company registered successfully", company.id
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to register company: {str(e)}")
             return False, f"Registration failed: {str(e)}", None
@@ -182,14 +183,18 @@ class CompanyService:
     async def get_company(self, company_id: int) -> Optional[Dict[str, Any]]:
         """Get company information by ID."""
         try:
-            async with get_db() as db:
+            logger.info(f"CompanyService.get_company called with ID: {company_id}")
+            db = next(get_db())
+            try:
                 company = (
                     db.query(Company)
                     .filter(Company.id == company_id)
                     .first()
                 )
                 
+                logger.info(f"Database query result for company ID {company_id}: {company}")
                 if not company:
+                    logger.warning(f"No company found with ID: {company_id}")
                     return None
                 
                 # Get company statistics
@@ -198,8 +203,8 @@ class CompanyService:
                 return {
                     "id": company.id,
                     "name": company.name,
-                    "contact_person": company.contact_person,
-                    "phone": company.phone,
+                    "contact_email": company.contact_email,
+                    "description": company.description,
                     "status": company.status.value,
                     "created_at": company.created_at.isoformat(),
                     "updated_at": company.updated_at.isoformat(),
@@ -215,7 +220,7 @@ class CompanyService:
                             "id": domain.id,
                             "domain_name": domain.domain_name,
                             "description": domain.description,
-                            "monitoring_enabled": domain.monitoring_enabled,
+                            "monitoring_enabled": domain.monitor_subdomains,
                             "added_at": domain.created_at.isoformat()
                         }
                         for domain in company.domains
@@ -232,7 +237,8 @@ class CompanyService:
                         for user in company.users
                     ]
                 }
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to get company {company_id}: {str(e)}")
             return None
@@ -241,7 +247,8 @@ class CompanyService:
                            admin_user_id: int) -> Tuple[bool, str]:
         """Update company information."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 company = db.query(Company).filter(Company.id == company_id).first()
                 if not company:
                     return False, "Company not found"
@@ -297,7 +304,8 @@ class CompanyService:
                 
                 logger.info(f"Company {company_id} updated successfully")
                 return True, "Company updated successfully"
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to update company {company_id}: {str(e)}")
             return False, f"Update failed: {str(e)}"
@@ -305,7 +313,8 @@ class CompanyService:
     async def delete_company(self, company_id: int, admin_user_id: int) -> Tuple[bool, str]:
         """Delete a company and all associated data."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 company = db.query(Company).filter(Company.id == company_id).first()
                 if not company:
                     return False, "Company not found"
@@ -350,7 +359,8 @@ class CompanyService:
                 
                 logger.info(f"Company {company_id} deleted successfully")
                 return True, "Company deleted successfully"
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to delete company {company_id}: {str(e)}")
             return False, f"Deletion failed: {str(e)}"
@@ -359,7 +369,8 @@ class CompanyService:
                            status_filter: Optional[CompanyStatus] = None) -> Dict[str, Any]:
         """List companies with pagination and filtering."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 query = db.query(Company)
                 
                 # Apply status filter
@@ -405,7 +416,8 @@ class CompanyService:
                     "offset": offset,
                     "has_more": (offset + len(company_list)) < total_count
                 }
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to list companies: {str(e)}")
             return {
@@ -424,7 +436,8 @@ class CompanyService:
             if not self._is_valid_domain(domain_data.domain_name):
                 return False, "Invalid domain format", None
             
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 # Check if company exists
                 company = db.query(Company).filter(Company.id == company_id).first()
                 if not company:
@@ -451,7 +464,7 @@ class CompanyService:
                     description=domain_data.description,
                     company_id=company_id,
                     added_by_user_id=user_id,
-                    monitoring_enabled=domain_data.monitoring_enabled
+                    monitor_subdomains=domain_data.monitor_subdomains
                 )
                 
                 db.add(domain)
@@ -466,7 +479,7 @@ class CompanyService:
                     details={
                         "domain_name": domain.domain_name,
                         "company_id": company_id,
-                        "monitoring_enabled": domain.monitoring_enabled
+                        "monitor_subdomains": domain.monitor_subdomains
                     }
                 )
                 db.add(audit_log)
@@ -475,7 +488,8 @@ class CompanyService:
                 
                 logger.info(f"Domain {domain_data.domain_name} added to company {company_id}")
                 return True, "Domain added successfully", domain.id
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to add domain: {str(e)}")
             return False, f"Failed to add domain: {str(e)}", None
@@ -484,7 +498,8 @@ class CompanyService:
                           user_id: int) -> Tuple[bool, str]:
         """Update domain information."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 domain = db.query(Domain).filter(Domain.id == domain_id).first()
                 if not domain:
                     return False, "Domain not found"
@@ -492,12 +507,12 @@ class CompanyService:
                 # Store original values
                 original_values = {
                     "description": domain.description,
-                    "monitoring_enabled": domain.monitoring_enabled
+                    "monitor_subdomains": domain.monitor_subdomains
                 }
                 
                 # Update fields
                 domain.description = domain_data.description
-                domain.monitoring_enabled = domain_data.monitoring_enabled
+                domain.monitor_subdomains = domain_data.monitor_subdomains
                 domain.updated_at = datetime.utcnow()
                 
                 # Log activity
@@ -511,7 +526,7 @@ class CompanyService:
                         "original_values": original_values,
                         "new_values": {
                             "description": domain.description,
-                            "monitoring_enabled": domain.monitoring_enabled
+                            "monitor_subdomains": domain.monitor_subdomains
                         }
                     }
                 )
@@ -521,7 +536,8 @@ class CompanyService:
                 
                 logger.info(f"Domain {domain_id} updated successfully")
                 return True, "Domain updated successfully"
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to update domain {domain_id}: {str(e)}")
             return False, f"Update failed: {str(e)}"
@@ -529,7 +545,8 @@ class CompanyService:
     async def delete_domain(self, domain_id: int, user_id: int) -> Tuple[bool, str]:
         """Delete a domain from a company."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 domain = db.query(Domain).filter(Domain.id == domain_id).first()
                 if not domain:
                     return False, "Domain not found"
@@ -557,7 +574,8 @@ class CompanyService:
                 
                 logger.info(f"Domain {domain_id} deleted successfully")
                 return True, "Domain deleted successfully"
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to delete domain {domain_id}: {str(e)}")
             return False, f"Deletion failed: {str(e)}"
@@ -565,7 +583,8 @@ class CompanyService:
     async def get_company_domains(self, company_id: int) -> List[Dict[str, Any]]:
         """Get all domains for a company."""
         try:
-            async with get_db() as db:
+            db = next(get_db())
+            try:
                 domains = (
                     db.query(Domain)
                     .filter(Domain.company_id == company_id)
@@ -578,7 +597,7 @@ class CompanyService:
                         "id": domain.id,
                         "domain_name": domain.domain_name,
                         "description": domain.description,
-                        "monitoring_enabled": domain.monitoring_enabled,
+                        "monitor_subdomains": domain.monitor_subdomains,
                         "created_at": domain.created_at.isoformat(),
                         "updated_at": domain.updated_at.isoformat(),
                         "added_by": {
@@ -588,7 +607,8 @@ class CompanyService:
                     }
                     for domain in domains
                 ]
-                
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to get domains for company {company_id}: {str(e)}")
             return []
@@ -615,7 +635,7 @@ class CompanyService:
                 .filter(
                     and_(
                         Domain.company_id == company_id,
-                        Domain.monitoring_enabled == True
+                        Domain.monitor_subdomains == True
                     )
                 )
                 .count()

@@ -5,6 +5,7 @@
 downloads/
 parsed_leaked_json/
 logs/
+tests/
 
 # Ignore cache files
 __pycache__/
