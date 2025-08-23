@@ -1,7 +1,9 @@
 import os
 import logging
-from typing import Optional
+from typing import Optional, List
 from dotenv import load_dotenv
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,6 +21,7 @@ class Config:
     def __init__(self):
         """Initialize configuration with validation."""
         self._validate_and_set_config()
+        self._validate_and_set_fastapi_config()
     
     def _validate_and_set_config(self) -> None:
         """Validate and set all configuration parameters."""
@@ -130,6 +133,224 @@ class Config:
             logger.error(f"Failed to load configuration: {e}")
             raise ConfigurationError(f"Configuration initialization failed: {e}")
     
+    def _validate_and_set_fastapi_config(self) -> None:
+        """Validate and set FastAPI-specific configuration parameters."""
+        try:
+            # FastAPI Application Settings
+            self.APP_NAME = self._get_env_var(
+                "APP_NAME",
+                default="Leka-App SaaS Edition",
+                required=False,
+                description="Application name"
+            )
+            
+            self.APP_VERSION = self._get_env_var(
+                "APP_VERSION",
+                default="2.0.0",
+                required=False,
+                description="Application version"
+            )
+            
+            self.APP_DESCRIPTION = self._get_env_var(
+                "APP_DESCRIPTION",
+                default="Advanced leak detection and monitoring platform",
+                required=False,
+                description="Application description"
+            )
+            
+            # Server Settings
+            self.HOST = self._get_env_var(
+                "HOST",
+                default="0.0.0.0",
+                required=False,
+                description="Server host"
+            )
+            
+            self.PORT = self._get_int_env_var(
+                "PORT",
+                default=8000,
+                min_value=1,
+                max_value=65535,
+                description="Server port"
+            )
+            
+            self.DEBUG = self._get_bool_env_var(
+                "DEBUG",
+                default=False,
+                description="Debug mode"
+            )
+            
+            self.RELOAD = self._get_bool_env_var(
+                "RELOAD",
+                default=False,
+                description="Auto-reload on code changes"
+            )
+            
+            # Environment
+            self.ENVIRONMENT = self._get_env_var(
+                "ENVIRONMENT",
+                default="development",
+                required=False,
+                description="Environment (development/staging/production)"
+            ).lower()
+            
+            # Database Settings (PostgreSQL)
+            self.POSTGRES_HOST = self._get_env_var(
+                "POSTGRES_HOST",
+                default="localhost",
+                required=False,
+                description="PostgreSQL host"
+            )
+            
+            self.POSTGRES_PORT = self._get_int_env_var(
+                "POSTGRES_PORT",
+                default=5432,
+                min_value=1,
+                max_value=65535,
+                description="PostgreSQL port"
+            )
+            
+            self.POSTGRES_USER = self._get_env_var(
+                "POSTGRES_USER",
+                default="postgres",
+                required=False,
+                description="PostgreSQL username"
+            )
+            
+            self.POSTGRES_PASSWORD = self._get_env_var(
+                "POSTGRES_PASSWORD",
+                default="",
+                required=False,
+                description="PostgreSQL password"
+            )
+            
+            self.POSTGRES_DB = self._get_env_var(
+                "POSTGRES_DB",
+                default="leka_app",
+                required=False,
+                description="PostgreSQL database name"
+            )
+            
+            # JWT Settings
+            self.JWT_SECRET_KEY = self._get_env_var(
+                "JWT_SECRET_KEY",
+                default="your-secret-key-change-in-production",
+                required=False,
+                description="JWT secret key"
+            )
+            
+            self.JWT_ALGORITHM = self._get_env_var(
+                "JWT_ALGORITHM",
+                default="HS256",
+                required=False,
+                description="JWT algorithm"
+            )
+            
+            self.JWT_ACCESS_TOKEN_EXPIRE_MINUTES = self._get_int_env_var(
+                "JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
+                default=30,
+                min_value=1,
+                description="Access token expiration in minutes"
+            )
+            
+            # CORS Settings
+            cors_origins_str = self._get_env_var(
+                "CORS_ORIGINS",
+                default="http://localhost:3000,http://localhost:8080",
+                required=False,
+                description="CORS allowed origins (comma-separated)"
+            )
+            self.CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+            
+            # Email Settings
+            self.SMTP_HOST = self._get_env_var(
+                "SMTP_HOST",
+                default="smtp.gmail.com",
+                required=False,
+                description="SMTP host"
+            )
+            
+            self.SMTP_PORT = self._get_int_env_var(
+                "SMTP_PORT",
+                default=587,
+                min_value=1,
+                max_value=65535,
+                description="SMTP port"
+            )
+            
+            self.SMTP_USERNAME = self._get_env_var(
+                "SMTP_USERNAME",
+                default="",
+                required=False,
+                description="SMTP username"
+            )
+            
+            self.SMTP_PASSWORD = self._get_env_var(
+                "SMTP_PASSWORD",
+                default="",
+                required=False,
+                description="SMTP password"
+            )
+            
+            self.FROM_EMAIL = self._get_env_var(
+                "FROM_EMAIL",
+                default="noreply@leka-app.com",
+                required=False,
+                description="From email address"
+            )
+            
+            # Redis Settings
+            self.REDIS_HOST = self._get_env_var(
+                "REDIS_HOST",
+                default="localhost",
+                required=False,
+                description="Redis host"
+            )
+            
+            self.REDIS_PORT = self._get_int_env_var(
+                "REDIS_PORT",
+                default=6379,
+                min_value=1,
+                max_value=65535,
+                description="Redis port"
+            )
+            
+            self.REDIS_PASSWORD = self._get_env_var(
+                "REDIS_PASSWORD",
+                default=None,
+                required=False,
+                description="Redis password"
+            )
+            
+            # Rate Limiting
+            self.RATE_LIMIT_REQUESTS = self._get_int_env_var(
+                "RATE_LIMIT_REQUESTS",
+                default=100,
+                min_value=1,
+                description="Rate limit requests per window"
+            )
+            
+            self.RATE_LIMIT_WINDOW_SECONDS = self._get_int_env_var(
+                "RATE_LIMIT_WINDOW_SECONDS",
+                default=60,
+                min_value=1,
+                description="Rate limit window in seconds"
+            )
+            
+            # File Upload Settings
+            self.MAX_UPLOAD_SIZE = self._get_int_env_var(
+                "MAX_UPLOAD_SIZE",
+                default=104857600,  # 100MB
+                min_value=1024,
+                description="Max upload size in bytes"
+            )
+            
+            logger.info("FastAPI configuration loaded successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to load FastAPI configuration: {e}")
+            raise ConfigurationError(f"FastAPI configuration initialization failed: {e}")
+    
     def _get_env_var(self, key: str, default: Optional[str] = None, 
                      required: bool = True, description: str = "") -> str:
         """Get environment variable with validation."""
@@ -190,9 +411,52 @@ class Config:
         """Get complete Elasticsearch URL."""
         return f"http://{self.ELASTICSEARCH_HOST}:{self.ELASTICSEARCH_PORT}"
     
+    def get_postgres_url(self, async_mode: bool = False) -> str:
+        """Get PostgreSQL connection URL."""
+        driver = "postgresql+asyncpg" if async_mode else "postgresql"
+        return (
+            f"{driver}://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+    
+    def get_redis_url(self) -> str:
+        """Get Redis connection URL."""
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+    
     def validate_telegram_config(self) -> bool:
         """Check if Telegram configuration is complete."""
         return bool(self.TELEGRAM_API_ID and self.TELEGRAM_API_HASH and self.TELEGRAM_CHANNEL_ID)
+    
+    def is_development(self) -> bool:
+        """Check if running in development mode."""
+        return self.ENVIRONMENT == "development"
+    
+    def is_production(self) -> bool:
+        """Check if running in production mode."""
+        return self.ENVIRONMENT == "production"
+    
+    def get_cors_config(self) -> dict:
+        """Get CORS configuration dictionary."""
+        return {
+            "allow_origins": self.CORS_ORIGINS,
+            "allow_credentials": True,
+            "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["*"],
+        }
+    
+    def get_email_config(self) -> dict:
+        """Get email configuration dictionary."""
+        return {
+            "smtp_host": self.SMTP_HOST,
+            "smtp_port": self.SMTP_PORT,
+            "smtp_username": self.SMTP_USERNAME,
+            "smtp_password": self.SMTP_PASSWORD,
+            "from_email": self.FROM_EMAIL,
+            "use_tls": True,
+            "use_ssl": False,
+        }
     
     def __str__(self) -> str:
         """String representation of configuration (without sensitive data)."""

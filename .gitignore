@@ -6,8 +6,7 @@ downloads/
 parsed_leaked_json/
 logs/
 
-# Ignore database and cache files
-db/
+# Ignore cache files
 __pycache__/
 *.pyc
 *.pyo
@@ -27,3 +26,56 @@ test_connections.py
 # TXT files
 downloaded_files.txt
 improvements_log.txt
+history.txt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Virtual environments
+venv/
+env/
+.venv/
+.virtualenv/
+pyvenv.cfg
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Docker
+.dockerignore.bak
+docker-compose.override.yml
+
+# Deployment
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Additional Python files
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
